@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sketch Room</title>
+    <link rel="stylesheet" href="/static/css/game_page.css" />
+  </head>
+
+  <body>
+    <div id="game">
+      <section id="status">
+        <div id="headline">
+          <small id="status-label">Waiting</small>
+          <div id="hint"></div>
+        </div>
+        <div id="timer">0</div>
+      </section>
+
+      <section id="board">
+        <div id="canvas-wrap">
+          <canvas
+            id="drawingScreen"
+            width="800"
+            height="500"
+            aria-label="Drawing canvas"
+          ></canvas>
+        </div>
+        <div id="toolbar" class="hidden">
+          <span id="swatches"></span>
+          <input
+            id="size"
+            type="range"
+            min="2"
+            max="24"
+            value="5"
+            aria-label="Brush size"
+          />
+          <button id="clear" type="button">Clear canvas</button>
+        </div>
+      </section>
+
+      <aside id="side">
+        <div class="panel">
+          <h2>Players</h2>
+          <ul id="players"></ul>
+        </div>
+        <div class="panel">
+          <h2>Guesses</h2>
+          <div id="chat-log" aria-live="polite"></div>
+          <form id="chat-form">
+            <input
+              id="chat-input"
+              maxlength="100"
+              placeholder="Type your guess"
+              autocomplete="off"
+            />
+            <button>Send</button>
+          </form>
+        </div>
+      </aside>
+    </div>
+
+    <script>
+      const COLORS = [
+        "#1b1b2f",
+        "#ef476f",
+        "#ff9f1c",
+        "#ffd23f",
+        "#06d6a0",
+        "#118ab2",
+        "#8338ec",
+        "#8d5524",
+      ];
+
+      const canvas = document.getElementById("drawingScreen");
+      const ctx = canvas.getContext("2d");
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      let ws = null;
+      let myId = null;
+      let myWord = null;
+      let drawerId = null;
+      let phase = "waiting";
+      let deadline = 0;
+
+      let color = COLORS[0];
+      let isPointerDown = false;
+      let last = null;
+
+      let playerName = "";
+      try {
+        playerName = (sessionStorage.getItem("doodli_name") || "").trim();
+      } catch (e) {}
+      if (!playerName) {
+        window.location.replace("/");
+      } else {
+        connect(playerName);
+      }
+
+      function connect(name) {
+        const proto = location.protocol === "https:" ? "wss" : "ws";
+        ws = new WebSocket(`${proto}://${location.host}/ws`);
+        ws.onopen = () => ws.send(JSON.stringify({ type: "join", name }));
+        ws.onmessage = (event) => handleMessage(JSON.parse(event.data));
+        ws.onclose = () =>
+          addChat({
+            type: "system",
+            text: "Disconnected. Refresh the page to rejoin.",
+          });
+      }
+
+      function send(obj) {
+        if (ws && ws.readyState === WebSocket.OPEN)
+          ws.send(JSON.stringify(obj));
+      }
+
+      function handleMessage(msg) {
+        switch (msg.type) {
+          case "joined":
+            myId = msg.id;
+            break;
+          case "history":
+            msg.strokes.forEach(drawSegment);
+            break;
+          case "draw":
+            drawSegment(msg);
+            break;
+          case "clear":
+            clearCanvas();
+            break;
+          case "word":
+            myWord = msg.word;
+            renderStatus();
+            break;
+          case "state":
+            applyState(msg);
+            break;
+          case "chat":
+          case "system":
+            addChat(msg);
+            break;
+        }
+      }
+
+      function applyState(state) {
+        phase = state.phase;
+        drawerId = state.drawer_id;
+        deadline = performance.now() + state.time_left * 1000;
+        if (phase !== "drawing" || drawerId !== myId) myWord = null;
+        window.lastHint = state.hint;
+        renderPlayers(state.players);
+        renderStatus();
+      }
+
+      function renderStatus() {
+        const hint = document.getElementById("hint");
+        const label = document.getElementById("status-label");
+        const iAmDrawing = phase === "drawing" && drawerId === myId;
+
+        if (phase === "waiting") {
+          label.textContent = "Waiting for another player";
+          hint.textContent = "";
+          hint.classList.remove("is-word");
+        } else if (phase === "intermission") {
+          label.textContent = "Next round starting";
+          hint.textContent = "";
+          hint.classList.remove("is-word");
+        } else if (iAmDrawing) {
+          label.textContent = "Your word. Draw it, no letters.";
+          hint.textContent = myWord || "";
+          hint.classList.add("is-word");
+        } else {
+          label.textContent = "Guess the drawing";
+          hint.textContent = window.lastHint || "";
+          hint.classList.remove("is-word");
+        }
+
+        canvas.classList.toggle("can-draw", iAmDrawing);
+        document
+          .getElementById("toolbar")
+          .classList.toggle("hidden", !iAmDrawing);
+        document.getElementById("chat-input").placeholder = iAmDrawing
+          ? "Chat (do not share the word)"
+          : "Type your guess";
+      }
+
+      function renderPlayers(players) {
+        const list = document.getElementById("players");
+        list.replaceChildren();
+        [...players]
+          .sort((a, b) => b.score - a.score)
+          .forEach((p) => {
+            const li = document.createElement("li");
+            if (p.guessed) li.classList.add("guessed");
+            if (p.id === myId) li.classList.add("me");
+
+            const name = document.createElement("span");
+            name.className = "name";
+            name.textContent = p.name;
+            if (p.id === drawerId) {
+              const tag = document.createElement("span");
+              tag.className = "tag";
+              tag.textContent = " (drawing)";
+              name.appendChild(tag);
+            }
+
+            const score = document.createElement("span");
+            score.className = "score";
+            score.textContent = p.score;
+
+            li.append(name, score);
+            list.appendChild(li);
+          });
+      }
+
+      function addChat(msg) {
+        const log = document.getElementById("chat-log");
+        const row = document.createElement("div");
+        if (msg.type === "system") {
+          row.className = "system";
+          row.textContent = msg.text;
+        } else {
+          const who = document.createElement("span");
+          who.className = "who";
+          who.textContent = msg.name + ": ";
+          row.append(who, document.createTextNode(msg.text));
+        }
+        log.appendChild(row);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      setInterval(() => {
+        const timer = document.getElementById("timer");
+        if (phase !== "drawing") {
+          timer.textContent = "";
+          return;
+        }
+        const left = Math.max(
+          0,
+          Math.ceil((deadline - performance.now()) / 1000),
+        );
+        timer.textContent = left;
+        timer.classList.toggle("low", left <= 10);
+      }, 250);
+
+      function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function drawSegment(s) {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.size;
+        ctx.beginPath();
+        ctx.moveTo(s.x0, s.y0);
+        ctx.lineTo(s.x1, s.y1);
+        ctx.stroke();
+      }
+
+      function canvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: ((event.clientX - rect.left) * canvas.width) / rect.width,
+          y: ((event.clientY - rect.top) * canvas.height) / rect.height,
+        };
+      }
+
+      function iAmDrawer() {
+        return phase === "drawing" && drawerId === myId;
+      }
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (!iAmDrawer()) return;
+        isPointerDown = true;
+        canvas.setPointerCapture(event.pointerId);
+        last = canvasPoint(event);
+        pushSegment(last, { x: last.x + 0.1, y: last.y });
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (!isPointerDown || !iAmDrawer()) return;
+        const point = canvasPoint(event);
+        pushSegment(last, point);
+        last = point;
+      });
+
+      const stopDrawing = () => {
+        isPointerDown = false;
+        last = null;
+      };
+      canvas.addEventListener("pointerup", stopDrawing);
+      canvas.addEventListener("pointercancel", stopDrawing);
+
+      function pushSegment(from, to) {
+        const segment = {
+          type: "draw",
+          x0: from.x,
+          y0: from.y,
+          x1: to.x,
+          y1: to.y,
+          color,
+          size: Number(document.getElementById("size").value),
+        };
+        drawSegment(segment);
+        send(segment);
+      }
+
+      const swatches = document.getElementById("swatches");
+      COLORS.forEach((c, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "swatch";
+        b.style.background = c;
+        b.setAttribute("aria-label", "Color " + c);
+        b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+        b.addEventListener("click", () => {
+          color = c;
+          swatches
+            .querySelectorAll(".swatch")
+            .forEach((s) => s.setAttribute("aria-pressed", "false"));
+          b.setAttribute("aria-pressed", "true");
+        });
+        swatches.appendChild(b);
+      });
+
+      document
+        .getElementById("clear")
+        .addEventListener("click", () => send({ type: "clear" }));
+
+      document.getElementById("chat-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = document.getElementById("chat-input");
+        if (input.value.trim()) send({ type: "guess", text: input.value });
+        input.value = "";
+      });
+    </script>
+  </body>
+</html>

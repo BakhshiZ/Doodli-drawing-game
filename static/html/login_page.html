@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login Room</title>
+    <link rel="stylesheet" href="/static/css/login_page.css" />
+  </head>
+
+  <body>
+    <main id="join">
+      <h1>Doodli</h1>
+      <p>
+        One person draws, everyone else guesses. You need at least two players
+        to start.
+      </p>
+      <form id="join-form">
+        <input
+          id="name-input"
+          maxlength="20"
+          placeholder="Please Enter Your Username"
+          autocomplete="off"
+          required
+        />
+        <button class="primary">Join the room</button>
+      </form>
+    </main>
+
+    <script>
+      const input = document.getElementById("name-input");
+      try {
+        input.value = sessionStorage.getItem("doodli_name") || "";
+      } catch (e) {}
+
+      document.getElementById("join-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        try {
+          sessionStorage.setItem("doodli_name", input.value.trim());
+        } catch (err) {}
+        window.location.href = "/game";
+      });
+    </script>
+  </body>
+</html>

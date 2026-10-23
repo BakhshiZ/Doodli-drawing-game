@@ -1,0 +1,275 @@
+:root {
+  --desk: #17323a;
+  --desk-light: #234650;
+  --paper: #ffffff;
+  --ink: #1b1b2f;
+  --marker: #ffd23f;
+  --coral: #ef476f;
+  --mint: #06d6a0;
+  --muted: #9db8bd;
+  --radius: 10px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--desk);
+  color: #f1f7f8;
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
+}
+button,
+input {
+  font: inherit;
+}
+button:focus-visible,
+input:focus-visible,
+canvas:focus-visible {
+  outline: 3px solid var(--marker);
+  outline-offset: 2px;
+}
+.hidden {
+  display: none !important;
+}
+
+#join {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+#join h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 3.6rem);
+  letter-spacing: -0.02em;
+}
+#join p {
+  margin: 0;
+  color: var(--muted);
+}
+#join form {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+#join input {
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--desk-light);
+  background: var(--desk-light);
+  color: inherit;
+  width: 16rem;
+}
+.primary {
+  padding: 0.7rem 1.2rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--marker);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#game {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-areas:
+    "status status"
+    "board  side";
+}
+@media (max-width: 860px) {
+  #game {
+    grid-template-columns: 1fr;
+    grid-template-areas: "status" "board" "side";
+  }
+}
+
+#status {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1.2rem;
+  background: var(--desk-light);
+  border-radius: var(--radius);
+}
+#headline {
+  min-width: 0;
+}
+#headline small {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+#hint {
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  word-break: break-word;
+}
+#hint.is-word {
+  color: var(--marker);
+  letter-spacing: 0.08em;
+}
+#timer {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
+#timer.low {
+  color: var(--coral);
+}
+
+#board {
+  grid-area: board;
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+}
+#canvas-wrap {
+  background: var(--paper);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 0 0 4px var(--desk-light);
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  cursor: default;
+}
+canvas.can-draw {
+  cursor: crosshair;
+}
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.swatch[aria-pressed="true"] {
+  border-color: #fff;
+}
+#size {
+  accent-color: var(--marker);
+}
+#clear {
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--coral);
+  background: transparent;
+  color: var(--coral);
+  border-radius: var(--radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#side {
+  grid-area: side;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+.panel {
+  background: var(--desk-light);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+.panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+#players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+#players li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+#players .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#players li.guessed .name {
+  color: var(--mint);
+}
+#players li.me .name {
+  font-weight: 800;
+}
+#players .tag {
+  color: var(--marker);
+  font-size: 0.85rem;
+}
+#players .score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+#chat-log {
+  height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+  overflow-wrap: anywhere;
+}
+#chat-log .system {
+  color: var(--muted);
+  font-style: italic;
+}
+#chat-log .who {
+  font-weight: 700;
+}
+#chat-form {
+  display: flex;
+  gap: 0.4rem;
+}
+#chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--desk);
+  background: var(--desk);
+  color: inherit;
+}
+#chat-form button {
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--marker);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}

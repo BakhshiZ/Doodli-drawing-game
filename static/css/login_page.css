@@ -1,0 +1,68 @@
+:root {
+  --desk: #17323a;
+  --desk-light: #234650;
+  --ink: #1b1b2f;
+  --marker: #ffd23f;
+  --muted: #9db8bd;
+  --radius: 10px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--desk);
+  color: #f1f7f8;
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
+}
+button,
+input {
+  font: inherit;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--marker);
+  outline-offset: 2px;
+}
+
+#join {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+#join h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 3.6rem);
+  letter-spacing: -0.02em;
+}
+#join p {
+  margin: 0;
+  color: var(--muted);
+}
+#join form {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+#join input {
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--desk-light);
+  background: var(--desk-light);
+  color: inherit;
+  width: 16rem;
+}
+.primary {
+  padding: 0.7rem 1.2rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--marker);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
